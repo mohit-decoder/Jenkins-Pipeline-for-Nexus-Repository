@@ -1,0 +1,40 @@
+pipeline {
+    agent any
+    stages {
+        stage('git-pull'){
+            steps{
+                git branch: 'main', credentialsId: 'gitcred', url: 'https://github.com/mohit-decoder/student-ui.git'
+            }
+        }
+        stage('Build'){
+            steps{
+                    sh 'sudo apt update -y'
+                    sh 'sudo apt install maven -y'
+                    sh 'mvn clean package'
+            }
+        }
+        stage('upload war to nexus') {
+            steps{
+                script{
+                    def mavenPom = readMavenPom file: 'pom.xml'
+                    nexusArtifactUploader artifacts: 
+                [
+                    [
+                        artifactId: 'studentapp',
+                        classifier: '', 
+                        file: "target/studentapp-${mavenPom.version}.war", 
+                        type: 'war'
+                    ]
+                ], 
+                        credentialsId: 'nexus3', 
+                        groupId: 'com.jdevs', 
+                        nexusUrl: '172.31.25.70:8081', 
+                        nexusVersion: 'nexus3', 
+                        protocol: 'http', 
+                        repository: 'simpleapp-release', 
+                        version: "${mavenPom.version}"
+                }
+            }
+        }
+    }
+}
